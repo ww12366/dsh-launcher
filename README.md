@@ -174,7 +174,7 @@ changes go through live reload.
 | Path | Purpose |
 |---|---|
 | `lib/index.js` | Host entry: `apply(ctx, config)`, node builtins only, zero dependencies |
-| `client/client.js` | Browser half: the settings section. Hand-authored ESM, so no build step |
+| `client/client.js` | Browser half: the settings section. `__ModuleLoader__` factory bundle, no build step |
 | `cordis.patch.yml` | Bundle patch that inserts the plugin into the layer stack |
 | `assets/` | Launcher files installed into `~/.dsh/launcher`, including the `.cs` source and build script so it stays rebuildable after install |
 | `test/` | `node --test` suite for the lifecycle and the settings route, driven through a fake host context |

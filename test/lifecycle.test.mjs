@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -300,4 +300,18 @@ test('settings route: rejects a non-GET/POST method', async () => {
   const res = jsonResponse()
   await settingsRoute(h).handler({ method: 'DELETE' }, res)
   assert.equal(res.captured.code, 405)
+})
+
+test('the client bundle is a __ModuleLoader__ factory, never raw ESM', () => {
+  // Regression guard for a real outage: DSH concatenates client bundles into a
+  // single combo response, so a top-level `import`/`export` lands mid-script,
+  // raises a SyntaxError, and takes the whole batch down with it -- the market,
+  // the sidebar and everything else that shared the combo.
+  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  assert.match(source, /window\.__ModuleLoader__\.load\(\{/)
+  assert.match(source, /factory: \(require\) =>/)
+  assert.match(source, /require\(['"]react['"]\)/)
+
+  const topLevelEsm = source.split('\n').filter((line) => /^(import|export)\s/.test(line))
+  assert.deepEqual(topLevelEsm, [], 'client bundles must not use top-level ESM syntax')
 })

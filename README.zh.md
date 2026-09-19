@@ -123,7 +123,7 @@ config: port=3080; node=D:\node manager\node.exe; cwd=D:\dsh
 | 路径 | 说明 |
 |---|---|
 | `lib/index.js` | 宿主入口：`apply(ctx, config)`，只用 node 内置模块，零依赖 |
-| `client/client.js` | 浏览器半边：那个设置分区。手写 ESM，无需构建步骤 |
+| `client/client.js` | 浏览器半边：那个设置分区。`__ModuleLoader__` factory bundle，无需构建步骤 |
 | `cordis.patch.yml` | bundle patch，把插件插进层栈 |
 | `assets/` | 要安装到 `~/.dsh/launcher` 的启动器文件（含 `.cs` 源码与构建脚本，装完仍可自行重编译） |
 | `test/` | `node --test` 测试套件，用假宿主上下文驱动生命周期与设置路由 |
