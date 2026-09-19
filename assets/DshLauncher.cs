@@ -177,7 +177,7 @@ namespace DshLauncher
             _logo = LoadLogo();
 
             FormBorderStyle = FormBorderStyle.None;
-            StartPosition = FormStartPosition.CenterScreen;
+            StartPosition = FormStartPosition.Manual;
             AutoScaleMode = AutoScaleMode.None;
             DoubleBuffered = true;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint
@@ -190,11 +190,38 @@ namespace DshLauncher
             try { Icon = LoadIcon(); }
             catch { }
 
-            using (Graphics g = CreateGraphics()) { _scale = g.DpiX / 96f; }
+            // Read the DPI from the desktop DC rather than CreateGraphics(): the
+            // latter creates this form's handle right here, and WinForms applies
+            // StartPosition at handle creation — which at that moment is still
+            // the default 300x300, so it would centre that size and leave the
+            // grown window visibly off-centre.
+            using (Graphics g = Graphics.FromHwnd(IntPtr.Zero)) { _scale = g.DpiX / 96f; }
+
             ClientSize = new Size((int)Math.Round(BaseW * _scale), (int)Math.Round(BaseH * _scale));
+            CenterOnActiveScreen();
 
             _timer.Interval = 180;
             _timer.Tick += OnTick;
+        }
+
+        /// <summary>
+        /// Place the splash in the middle of the working area of the monitor the
+        /// user is actually on — the one under the cursor, which is where they
+        /// just clicked the shortcut — falling back to the primary monitor. The
+        /// working area is used so the taskbar can never cover the splash.
+        /// </summary>
+        private void CenterOnActiveScreen()
+        {
+            Screen target = null;
+            try { target = Screen.FromPoint(Cursor.Position); }
+            catch { }
+            if (target == null) target = Screen.PrimaryScreen;
+            if (target == null) return;
+
+            Rectangle area = target.WorkingArea;
+            Location = new Point(
+                area.X + (area.Width - Width) / 2,
+                area.Y + (area.Height - Height) / 2);
         }
 
         protected override CreateParams CreateParams
