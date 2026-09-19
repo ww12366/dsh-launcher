@@ -137,12 +137,14 @@ async function getSettings(h) {
   return JSON.parse(res.captured.body)
 }
 
-test('registers the watch route, the settings route and the page script', () => {
+test('registers the watch, settings, diagnostics and client-report routes', () => {
   const h = harness()
   apply(h.ctx, base)
-  assert.equal(h.routes.length, 2)
+  assert.equal(h.routes.length, 4)
   assert.ok(watchRoute(h), 'watch route')
   assert.ok(settingsRoute(h), 'settings route')
+  assert.ok(h.routes.some((r) => r.path === '/dsh-launcher/diagnostics'), 'diagnostics route')
+  assert.ok(h.routes.some((r) => r.path === '/dsh-launcher/client-report'), 'client-report route')
 
   const table = []
   h.injections[0](table)

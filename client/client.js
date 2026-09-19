@@ -260,15 +260,37 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * Tell the host half what happened here.
+     *
+     * The catches in apply() are deliberate -- a broken card must not take the
+     * settings shell down with it -- but silent catches are exactly why "the
+     * row never appeared" was undiagnosable: the host had no way to tell
+     * whether this file ran at all. Fire-and-forget, never awaited.
+     * @param payload - loaded/section/error fields the host records.
+     */
+    function report(payload) {
+      try {
+        void fetch('/dsh-launcher/client-report', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(() => {})
+      } catch {
+        /* reporting must never be the reason this file fails */
+      }
+    }
+
+    /**
      * Register the settings section.
      * @param ctx - client root context.
      */
     function apply(ctx) {
+      report({ loaded: true })
       try {
         const t = makeT(ctx)
         ctx.slots.inject('settings.section', () => {
           try {
-            return ctx.slots.register(
+            const dispose = ctx.slots.register(
               {
                 name: 'settings.section',
                 id: 'dsh-launcher',
@@ -278,12 +300,15 @@ window.__ModuleLoader__.load({
               },
               LauncherSection
             )
-          } catch {
+            report({ loaded: true, section: 'registered' })
+            return dispose
+          } catch (error) {
+            report({ loaded: true, error: `register: ${error && error.message ? error.message : String(error)}` })
             return () => {}
           }
         })
-      } catch {
-        /* never break the settings shell because this card could not register */
+      } catch (error) {
+        report({ loaded: true, error: `inject: ${error && error.message ? error.message : String(error)}` })
       }
     }
 
