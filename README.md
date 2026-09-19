@@ -87,11 +87,45 @@ the loader passes only that sub-object to the plugin:
     shortcutPath: 'C:\Users\me\Desktop\dsh.lnk'    # default: the shell's Desktop folder
     workspaceRoot: 'D:\work'                       # default: the host's working directory
     port: 3080                                     # default: 3080
+    exitOnBrowserClose: true                       # default: false — see below
+    exitGraceSeconds: 25                           # default: 25
+    exitOnlyWhenIdle: true                         # default: true
 ```
 
 `workspaceRoot` is what the shortcut records as "Start in", and dsh treats it as the
 workspace root. It defaults to the host's working directory, which by DSH's own
 definition *is* the workspace root.
+
+## Closing the page can shut the host down
+
+Off by default: exiting a host is a big hammer, and a package that reached for it
+unasked would be a nasty surprise. Turn it on with `exitOnBrowserClose: true`.
+
+With it on, the launcher and the host close the loop: the shortcut starts the service,
+and once the last browser page goes away the service ends by itself. Without it, the
+host is a detached background process that outlives the tab, so the shortcut's next
+launch just reconnects to a stale tree — plugins you installed since are not in it, and
+nothing looks wrong.
+
+**How the page is detected.** DSH exposes no browser count, and the WebServer service
+keeps its socket table private, so the page is asked rather than guessed at: the plugin
+contributes one `<script>` row to the served `index.html`, which opens an `EventSource`
+to an SSE route the plugin owns. One live connection per open page, so "no connections"
+means "no page".
+
+**Why it is deliberately cautious.** A wrong "nobody is watching" kills your session, so:
+
+* it **never exits unless a page connected at least once** — a blocked or failed
+  injected script can only make the feature inert, never fatal;
+* it waits out `exitGraceSeconds`, so a **reload is not a close**;
+* it **refuses to exit while any agent is `running`**, so it cannot cut off work in
+  flight, and re-checks after another grace period;
+* the shutdown goes through `ctx.appExit`, the launcher's bounded dispose-then-exit
+  path, not `process.exit`.
+
+Sessions are persisted, so nothing is lost by the host going away — but a turn that is
+still running is a different matter, which is what `exitOnlyWhenIdle` is for. Set it to
+`false` only if you really do want the page to own the host's lifetime.
 
 ## Caveats
 
@@ -125,6 +159,7 @@ changes go through live reload.
 | `lib/index.js` | Host entry: `apply(ctx, config)`, node builtins only, zero dependencies |
 | `cordis.patch.yml` | Bundle patch that inserts the plugin into the layer stack |
 | `assets/` | Launcher files installed into `~/.dsh/launcher`, including the `.cs` source and build script so it stays rebuildable after install |
+| `test/` | `node --test` suite for the browser-close lifecycle, driven through a fake host context |
 | `LICENSE` | MIT |
 
 See `assets/README.md` for the launcher's own usage, its C# 5 build constraint, and

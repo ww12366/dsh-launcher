@@ -70,9 +70,29 @@ config: port=3080; node=D:\node manager\node.exe; cwd=D:\dsh
     shortcutPath: 'C:\Users\me\Desktop\dsh.lnk'    # 默认按 shell 的桌面路径自动定位
     workspaceRoot: 'D:\work'                       # 默认取宿主的工作目录
     port: 3080                                     # 默认 3080
+    exitOnBrowserClose: true                       # 默认 false，见下一节
+    exitGraceSeconds: 25                           # 默认 25
+    exitOnlyWhenIdle: true                         # 默认 true
 ```
 
 `workspaceRoot` 就是快捷方式里记录的「起始位置」，dsh 会把它当作工作区根目录。默认取宿主自己的工作目录——按 DSH 自己的定义，那**就是**工作区根目录。
+
+## 关掉网页可以让宿主自己退出
+
+默认关闭：结束一个宿主是很重的手段，一个包如果擅自这么做会让人很难受。用 `exitOnBrowserClose: true` 打开。
+
+打开之后，启动器和宿主就闭环了：快捷方式把服务拉起来，最后一个网页关闭后服务自己结束。不开的话，宿主是个脱离终端的后台进程，能活过标签页——于是下次点快捷方式只是**连回一棵旧树**：你后来装的插件不在里面，而且表面上看不出任何异常。
+
+**怎么判断"网页还在不在"。** DSH 没有暴露浏览器连接数，WebServer 服务的 socket 表也是私有的，所以插件不去猜流量，而是**直接问网页**：往服务出去的 `index.html` 里插一行 `<script>`，它对本插件拥有的一个 SSE 路由开 `EventSource`。一个打开的页面一条连接，所以"没有连接"就等于"没有页面"。
+
+**为什么设计得这么保守。** 一次错误的"没人在看"就会杀掉你的会话，所以：
+
+* **从未有过页面连接时绝不退出**——注入脚本被拦或失败，只会让这个功能失效，绝不会致命；
+* 等满 `exitGraceSeconds`，所以**刷新不会被当成关闭**；
+* **只要有 agent 处于 `running` 就拒绝退出**，不会掐断正在进行的工作，并在下一个宽限期后重新检查；
+* 退出走 `ctx.appExit`——启动器那条"先 dispose 再退出"的有界路径，而不是 `process.exit`。
+
+会话是持久化的，所以宿主消失不会丢记录；但**正在跑的一轮**是另一回事，`exitOnlyWhenIdle` 就是为它准备的。只有当你确实想让页面的生命周期决定宿主的生死时，才把它设成 `false`。
 
 ## 注意事项
 
@@ -95,6 +115,7 @@ config: port=3080; node=D:\node manager\node.exe; cwd=D:\dsh
 | `lib/index.js` | 宿主入口：`apply(ctx, config)`，只用 node 内置模块，零依赖 |
 | `cordis.patch.yml` | bundle patch，把插件插进层栈 |
 | `assets/` | 要安装到 `~/.dsh/launcher` 的启动器文件（含 `.cs` 源码与构建脚本，装完仍可自行重编译） |
+| `test/` | `node --test` 测试套件，用假宿主上下文驱动浏览器关闭生命周期 |
 | `LICENSE` | MIT |
 
 启动器本身的用法、C# 5 编译限制、排错方法见 `assets/README.zh.md`（[English](assets/README.md)）。
