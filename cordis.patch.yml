@@ -1,13 +1,14 @@
 # dsh bundle patch: inserts this plugin into a profile's layer stack.
 #
-# Optional config keys (the loader passes only this sub-object to the plugin):
+# Optional config (the loader passes only this sub-object to the plugin):
 #   - id: dsh-launcher
 #     name: 'dsh-launcher'
 #     config:
-#       install: true          # copy/repair the launcher files
-#       shortcut: true         # create/repair the desktop shortcut
-#       shortcutPath: 'C:\Users\me\Desktop\dsh.lnk'
-#       workspaceRoot: 'D:\dsh'
+#       install: true                                  # sync the launcher files
+#       shortcut: true                                 # manage the desktop shortcut
+#       shortcutPath: 'C:\Users\me\Desktop\dsh.lnk'    # default: the shell Desktop
+#       workspaceRoot: 'D:\work'                       # default: host working directory
+#       port: 3080                                     # default: 3080
 - insert:
     - id: dsh-launcher
       name: 'dsh-launcher'

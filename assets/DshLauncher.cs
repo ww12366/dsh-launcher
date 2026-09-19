@@ -26,16 +26,69 @@ namespace DshLauncher
 {
     internal static class Cfg
     {
-        // ---- tune these -------------------------------------------------
-        // 3080 is the dsh web default. `--port N` on the command line overrides
-        // it for one run and is forwarded to `dsh web`.
-        internal static int Port = 3080;
-        internal const string WorkspaceRoot = @"D:\dsh";
-        internal const string NodeExe = @"D:\node manager\node.exe";
+        // Defaults only — nothing here is hardcoded to a particular machine.
+        // launcher.ini, sitting next to this executable, overrides any of them;
+        // the dsh-launcher plugin regenerates that file on every host boot from
+        // the node binary and working directory the host is actually running.
+        internal const int DefaultPort = 3080;
         internal const int TimeoutSeconds = 150;
-        // -----------------------------------------------------------------
+
+        internal static int Port = DefaultPort;
+
+        /// Directory `dsh web` is started in; dsh treats it as the workspace
+        /// root. Falls back to the user profile when unset.
+        internal static string WorkspaceRoot =
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        /// Explicit node.exe. Left null, the launcher resolves `node` on PATH.
+        internal static string NodeExe;
 
         internal static string Url { get { return "http://127.0.0.1:" + Port; } }
+
+        internal static readonly string IniPath =
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher.ini");
+
+        /// Read launcher.ini (plain key=value lines). A missing, unreadable or
+        /// malformed file is never an error: every default above still works,
+        /// so deleting the file can only make the launcher more generic.
+        internal static void LoadIni()
+        {
+            try
+            {
+                string[] lines = File.Exists(IniPath) ? File.ReadAllLines(IniPath) : new string[0];
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string line = lines[i].Trim();
+                    if (line.Length == 0 || line[0] == '#' || line[0] == ';') continue;
+                    int eq = line.IndexOf('=');
+                    if (eq <= 0) continue;
+                    string key = line.Substring(0, eq).Trim();
+                    string value = line.Substring(eq + 1).Trim();
+                    if (value.Length == 0) continue;
+
+                    if (string.Equals(key, "port", StringComparison.OrdinalIgnoreCase))
+                    {
+                        int parsed;
+                        if (int.TryParse(value, out parsed) && parsed > 0 && parsed < 65536) Port = parsed;
+                    }
+                    else if (string.Equals(key, "nodeExe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        NodeExe = value;
+                    }
+                    else if (string.Equals(key, "workspaceRoot", StringComparison.OrdinalIgnoreCase))
+                    {
+                        WorkspaceRoot = value;
+                    }
+                }
+            }
+            catch (Exception ex) { Log("launcher.ini ignored: " + ex.Message); }
+
+            // Always recorded, so "which port / which node did it actually use"
+            // is answerable from launcher.log without guessing.
+            Log("config: port=" + Port
+                + "; node=" + (NodeExe == null ? "(resolved from PATH)" : NodeExe)
+                + "; cwd=" + WorkspaceRoot);
+        }
 
         internal static readonly string HomeDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dsh", "launcher");
@@ -326,7 +379,7 @@ namespace DshLauncher
                 string body;
                 if (bin != null)
                 {
-                    string node = File.Exists(Cfg.NodeExe) ? Cfg.NodeExe : "node";
+                    string node = (Cfg.NodeExe != null && File.Exists(Cfg.NodeExe)) ? Cfg.NodeExe : "node";
                     Cfg.Log("launching node: " + node + " " + bin + " web" + portArg);
                     body = "@echo off\r\n"
                          + "echo [%DATE% %TIME%] \" " + node + " \" \"" + bin + "\" web" + portArg + " > \"" + Cfg.WebLog + "\"\r\n"
@@ -344,7 +397,9 @@ namespace DshLauncher
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe");
                 psi.Arguments = "/c \"" + Cfg.Wrapper + "\"";
-                psi.WorkingDirectory = Cfg.WorkspaceRoot;
+                psi.WorkingDirectory = Directory.Exists(Cfg.WorkspaceRoot)
+                    ? Cfg.WorkspaceRoot
+                    : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;
                 _proc = Process.Start(psi);
@@ -590,6 +645,9 @@ namespace DshLauncher
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            // ini first, so an explicit --port on the command line still wins.
+            Cfg.LoadIni();
 
             bool preview = false;
             int n = (args == null) ? 0 : args.Length;

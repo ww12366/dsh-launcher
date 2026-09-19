@@ -1,18 +1,33 @@
 {
   "name": "dsh-launcher",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Keeps the console-free DeepSeek Harness desktop launcher installed and its desktop shortcut correct.",
+  "description": "Keeps the console-free DeepSeek Harness desktop launcher installed and its desktop shortcut correct. Windows only.",
   "type": "module",
   "main": "lib/index.js",
   "license": "MIT",
+  "author": "ww12366",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ww12366/dsh-launcher.git"
+  },
+  "homepage": "https://github.com/ww12366/dsh-launcher#readme",
+  "bugs": {
+    "url": "https://github.com/ww12366/dsh-launcher/issues"
+  },
   "keywords": [
     "deepseek",
     "harness",
     "dsh",
     "dsh-plugin",
     "launcher",
-    "splash"
+    "splash",
+    "windows",
+    "shortcut",
+    "console"
   ],
   "dsh": {
     "bundle": {
@@ -29,6 +44,7 @@
     "assets",
     "cordis.patch.yml",
     "README.md",
-    "README.zh.md"
+    "README.zh.md",
+    "LICENSE"
   ]
 }

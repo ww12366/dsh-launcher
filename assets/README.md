@@ -48,18 +48,34 @@ DshLauncher.exe --port 8080     use another port; forwarded to dsh web
   signed with a durable secret and valid for 30 days (`cookieMaxAgeDays`, default 30, in
   `dsh-client-connection`).
 
-## Changing the configuration
+## Configuration
 
-Edit `Cfg` at the top of `DshLauncher.cs`:
+Everything machine-specific lives in `launcher.ini`, next to this executable. The
+`dsh-launcher` DSH plugin regenerates it on every host boot, from the host it is
+actually running inside:
+
+```ini
+nodeExe=D:\node manager\node.exe
+workspaceRoot=D:\dsh
+port=3080
+```
+
+A missing file breaks nothing: `nodeExe` falls back to `node` on `PATH`, `workspaceRoot`
+to your user profile, `port` to 3080. `--port N` on the command line still wins over the
+file for one run. Whatever ends up in effect is recorded in `launcher.log`:
+
+```text
+config: port=3080; node=D:\node manager\node.exe; cwd=D:\dsh
+```
+
+The only compiled-in values left are defaults in `Cfg` at the top of `DshLauncher.cs`:
 
 ```csharp
-internal static int Port = 3080;                      // port
-internal const string WorkspaceRoot = @"D:\dsh";      // workspace root (dsh's invoking directory)
-internal const string NodeExe = @"D:\node manager\node.exe";
+internal const int DefaultPort = 3080;
 internal const int TimeoutSeconds = 150;              // startup timeout
 ```
 
-Rebuild afterwards — this is required:
+Changing those, or anything else in the source, requires a rebuild:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File build.ps1
@@ -75,5 +91,10 @@ build fails.
 ## Troubleshooting
 
 When startup fails the splash turns red and offers "view log", which opens `dsh-web.log`
-in Notepad. `launcher.log` is also worth reading — it records every probe, launch and
-ready step.
+in Notepad. `launcher.log` is also worth reading — it records the resolved configuration
+and every probe, launch and ready step.
+
+## License
+
+MIT — this launcher is part of the
+[dsh-launcher](https://github.com/ww12366/dsh-launcher) DSH plugin.

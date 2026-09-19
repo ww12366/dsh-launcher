@@ -45,18 +45,30 @@ DshLauncher.exe --port 8080     换端口，会一并传给 dsh web
   由持久密钥签名、有效期 30 天的 cookie（见 `dsh-client-connection`
   的 `cookieMaxAgeDays` 默认值 30）。
 
-## 改配置
+## 配置
 
-编辑 `DshLauncher.cs` 顶部的 `Cfg`：
+所有与机器相关的东西都在 exe 旁边的 `launcher.ini` 里。`dsh-launcher` 插件每次宿主启动时会按**它实际所在的那个宿主**重新生成这个文件：
+
+```ini
+nodeExe=D:\node manager\node.exe
+workspaceRoot=D:\dsh
+port=3080
+```
+
+文件不存在也不会坏：`nodeExe` 回退到 `PATH` 上的 `node`，`workspaceRoot` 回退到用户主目录，`port` 回退到 3080。命令行的 `--port N` 对当次运行仍然优先于文件。最终生效的值会记进 `launcher.log`：
+
+```text
+config: port=3080; node=D:\node manager\node.exe; cwd=D:\dsh
+```
+
+源码里只剩 `Cfg` 顶部这些「默认值」，它们只是默认值：
 
 ```csharp
-internal static int Port = 3080;                      // 端口
-internal const string WorkspaceRoot = @"D:\dsh";      // 工作区根目录（dsh 的 invoking directory）
-internal const string NodeExe = @"D:\node manager\node.exe";
+internal const int DefaultPort = 3080;
 internal const int TimeoutSeconds = 150;              // 启动超时
 ```
 
-改完必须重新编译：
+改这些、或改源码里任何其它东西，都必须重新编译：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File build.ps1
@@ -71,4 +83,8 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 ## 排错
 
 启动失败时启动画面会变红并给出「查看日志」，点一下用记事本打开 `dsh-web.log`。
-也可以直接看 `launcher.log`（记录了探测、启动、就绪的每一步）。
+也可以直接看 `launcher.log`（记录了**解析后的配置**，以及探测、启动、就绪的每一步）。
+
+## 许可证
+
+MIT——这个启动器是 [dsh-launcher](https://github.com/ww12366/dsh-launcher) 插件的一部分。
