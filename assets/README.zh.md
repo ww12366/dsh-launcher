@@ -1,0 +1,74 @@
+# DeepSeek Harness 启动器
+
+[English](README.md) | 中文
+
+桌面快捷方式 `dsh.lnk` 现在指向 `DshLauncher.exe`。双击后出现一个带 logo 和进度条的
+启动画面，**不会再弹出终端窗口**；服务就绪后自动打开浏览器，启动画面关闭。
+
+## 为什么不再有终端窗口
+
+原来的快捷方式指向 `npx.cmd --verbose @deepseek-ai/dsh web`。`.cmd` 必须由 `cmd.exe`
+执行，于是一定会分配一个控制台窗口。
+
+现在的 `DshLauncher.exe` 用 `/target:winexe` 编译（PE subsystem = 2，GUI 子系统），
+进程本身**不存在控制台**；它再用 `CreateNoWindow` 把 `dsh web` 作为隐藏子进程拉起。
+两层都没有窗口。
+
+## 文件
+
+| 文件 | 说明 |
+|---|---|
+| `DshLauncher.exe` | 启动器本体（自助包含，logo 已内嵌，无需外部图片） |
+| `DshLauncher.cs` | 源代码（故意用 C# 5 语法，见下） |
+| `app.manifest` | DPI 感知 + Windows 10/11 声明（圆角、清晰渲染） |
+| `build.ps1` | 重新编译 |
+| `dsh.ico` | logo 原图 |
+| `run-dsh-web.cmd` | 每次启动自动生成的实际启动命令 |
+| `launcher.log` | 启动器自己的日志 |
+| `dsh-web.log` | `dsh web` 的输出（每次启动覆盖） |
+| `dsh.lnk.original-backup` | 原来的桌面快捷方式备份 |
+
+## 命令行参数
+
+```text
+DshLauncher.exe                 正常启动
+DshLauncher.exe --preview       只显示界面，不启动服务（调外观用）
+DshLauncher.exe --port 8080     换端口，会一并传给 dsh web
+```
+
+## 行为
+
+- **服务没在跑** → 启动画面上进度条前进，隐藏启动 `dsh web`，端口响应后关闭、
+  浏览器自动打开（由 `dsh web` 自己用带 `?token=` 的地址打开，保证一次就通过认证）。
+- **服务已经在跑** → 不再重复启动，直接打开浏览器后关闭（约 1.4 秒）。
+  这种情况没有进程能提供 `?token=`，所以打开的是裸地址；认证靠浏览器里那张
+  由持久密钥签名、有效期 30 天的 cookie（见 `dsh-client-connection`
+  的 `cookieMaxAgeDays` 默认值 30）。
+
+## 改配置
+
+编辑 `DshLauncher.cs` 顶部的 `Cfg`：
+
+```csharp
+internal static int Port = 3080;                      // 端口
+internal const string WorkspaceRoot = @"D:\dsh";      // 工作区根目录（dsh 的 invoking directory）
+internal const string NodeExe = @"D:\node manager\node.exe";
+internal const int TimeoutSeconds = 150;              // 启动超时
+```
+
+改完必须重新编译：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build.ps1
+```
+
+## 为什么锁死 C# 5
+
+系统自带的 `C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe` 只支持到
+`/langversion:5`（Roslyn 随 Visual Studio 提供）。所以源码里不要用字符串插值
+`$"..."`、`?.`、表达式体成员等 C# 6+ 语法，否则编译失败。
+
+## 排错
+
+启动失败时启动画面会变红并给出「查看日志」，点一下用记事本打开 `dsh-web.log`。
+也可以直接看 `launcher.log`（记录了探测、启动、就绪的每一步）。
