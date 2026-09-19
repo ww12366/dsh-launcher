@@ -94,6 +94,16 @@ config: port=3080; node=D:\node manager\node.exe; cwd=D:\dsh
 
 会话是持久化的，所以宿主消失不会丢记录；但**正在跑的一轮**是另一回事，`exitOnlyWhenIdle` 就是为它准备的。只有当你确实想让页面的生命周期决定宿主的生死时，才把它设成 `false`。
 
+## 也可以直接从界面改
+
+包里带了一个浏览器半边，所以这是一个**设置在左侧列表里的一级分区**（和「皮肤中心」用的是同一个 `settings.section` 槽），不需要你去改 YAML：
+
+* **立刻关闭**——最后一个网页一关就结束。下限约 1 秒：刷新页面会把页面的连接断掉再重连，真正做到 0 秒的话，**按一下刷新就会把宿主杀掉**。
+* **设定秒数后关闭**——等 N 秒（1–86400）。
+* **永不关闭**——服务留在后台。
+
+选择存在 `~/.dsh/launcher/settings.json`，改动**立即作用于正在运行的宿主**，不需要重启。读写走 `GET|POST /dsh-launcher/settings`；已保存的选择优先于 profile 里的配置，所以那几项配置只决定初始值。
+
 ## 注意事项
 
 **本地路径安装是 `link:`，源目录不能删。**
@@ -113,9 +123,10 @@ config: port=3080; node=D:\node manager\node.exe; cwd=D:\dsh
 | 路径 | 说明 |
 |---|---|
 | `lib/index.js` | 宿主入口：`apply(ctx, config)`，只用 node 内置模块，零依赖 |
+| `client/client.js` | 浏览器半边：那个设置分区。手写 ESM，无需构建步骤 |
 | `cordis.patch.yml` | bundle patch，把插件插进层栈 |
 | `assets/` | 要安装到 `~/.dsh/launcher` 的启动器文件（含 `.cs` 源码与构建脚本，装完仍可自行重编译） |
-| `test/` | `node --test` 测试套件，用假宿主上下文驱动浏览器关闭生命周期 |
+| `test/` | `node --test` 测试套件，用假宿主上下文驱动生命周期与设置路由 |
 | `LICENSE` | MIT |
 
 启动器本身的用法、C# 5 编译限制、排错方法见 `assets/README.zh.md`（[English](assets/README.md)）。

@@ -1,8 +1,8 @@
 {
   "name": "dsh-launcher",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
-  "description": "Keeps the console-free DeepSeek Harness desktop launcher installed, its desktop shortcut correct, and optionally exits the host once the last browser page closes. Windows only.",
+  "description": "Keeps the console-free DeepSeek Harness desktop launcher installed, its desktop shortcut correct, and controls when the host ends after the last browser page closes. Windows only.",
   "type": "module",
   "main": "lib/index.js",
   "license": "MIT",
@@ -35,15 +35,24 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
     }
   },
   "exports": {
     ".": "./lib/index.js",
+    "./client": "./client/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
+    "client",
     "assets",
     "cordis.patch.yml",
     "README.md",

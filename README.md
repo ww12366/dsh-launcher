@@ -127,6 +127,23 @@ Sessions are persisted, so nothing is lost by the host going away — but a turn
 still running is a different matter, which is what `exitOnlyWhenIdle` is for. Set it to
 `false` only if you really do want the page to own the host's lifetime.
 
+## Changing it from the GUI
+
+The package ships a browser half too, so this is a **first-level row in the settings
+nav** (the same `settings.section` slot the Skin Center uses) rather than something you
+have to edit YAML for:
+
+* **End immediately** — as soon as the last page closes. Floored at about a second,
+  because a plain refresh drops and re-opens the page's event stream and a literal zero
+  would let a reload kill the host.
+* **End after a delay** — wait N seconds (1–86400).
+* **Never end** — leave the service in the background.
+
+The choice lives in `~/.dsh/launcher/settings.json` and is applied to the **running**
+host the moment you change it, so no restart is needed. It travels over
+`GET|POST /dsh-launcher/settings`; a saved choice outranks the profile config, which
+therefore only decides the starting point.
+
 ## Caveats
 
 **A local-path install is a `link:`, so the source directory must stay put.**
@@ -157,9 +174,10 @@ changes go through live reload.
 | Path | Purpose |
 |---|---|
 | `lib/index.js` | Host entry: `apply(ctx, config)`, node builtins only, zero dependencies |
+| `client/client.js` | Browser half: the settings section. Hand-authored ESM, so no build step |
 | `cordis.patch.yml` | Bundle patch that inserts the plugin into the layer stack |
 | `assets/` | Launcher files installed into `~/.dsh/launcher`, including the `.cs` source and build script so it stays rebuildable after install |
-| `test/` | `node --test` suite for the browser-close lifecycle, driven through a fake host context |
+| `test/` | `node --test` suite for the lifecycle and the settings route, driven through a fake host context |
 | `LICENSE` | MIT |
 
 See `assets/README.md` for the launcher's own usage, its C# 5 build constraint, and

@@ -3,3 +3,4 @@ node_modules/
 *.log
 .installed.json
 launcher.ini
+settings.json
