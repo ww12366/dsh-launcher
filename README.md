@@ -105,7 +105,7 @@ A local link is convenient while iterating and a liability once things settle.
 **The plugin "owns" `~/.dsh\launcher`.**
 Each boot it compares by **file size** and overwrites same-named files. To customise
 the installed launcher, edit the plugin's `assets/` and rebuild; edits made directly in
-the installed copy are synced over on the next boot. `launcher.log`, `dsh-web.log`,
+the installed copy are synced over on the next boot. `launcher.log`, `dsh-web-*.log`,
 `run-dsh-web.cmd`, `launcher.ini` and `dsh.lnk.original-backup` are not in the sync
 list and are left alone.
 

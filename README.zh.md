@@ -80,7 +80,7 @@ config: port=3080; node=D:\node manager\node.exe; cwd=D:\dsh
 `dsh plugin add C:\path\to\dsh-launcher` 装进来的是 junction 而不是副本。把这个目录删掉或改名，bundle 就找不到了，而 **DSH 对缺失 bundle 是「启动即失败」**（见 `dsh-app-boot`：*A missing bundle or one without a patch declaration fails startup loudly*）。改从 GitHub 安装就没有这个问题。本地链接适合边改边试，定下来之后反而是隐患。
 
 **插件「拥有」`~/.dsh\launcher`。**
-每次启动它会按**文件大小**比对并覆盖同名文件。想改装好的启动器，应该改插件里的 `assets/`（然后重新编译），否则下次开机改动会被同步覆盖回去。`launcher.log`、`dsh-web.log`、`run-dsh-web.cmd`、`launcher.ini` 和 `dsh.lnk.original-backup` 不在同步列表里，不会被碰。
+每次启动它会按**文件大小**比对并覆盖同名文件。想改装好的启动器，应该改插件里的 `assets/`（然后重新编译），否则下次开机改动会被同步覆盖回去。`launcher.log`、`dsh-web-*.log`、`run-dsh-web.cmd`、`launcher.ini` 和 `dsh.lnk.original-backup` 不在同步列表里，不会被碰。
 
 **开机开销约 0.3 秒。**
 `apply()` 是同步的，其中约 290ms 花在那一次 PowerShell 调用上（要问 shell 桌面在哪、快捷方式当前指向哪）。相对于 DSH 本身数秒的启动可以忽略。

@@ -26,7 +26,7 @@ so the process itself **has no console**; it then starts `dsh web` as a hidden c
 | `dsh.ico` | Original logo artwork |
 | `run-dsh-web.cmd` | The actual launch command, regenerated on every start |
 | `launcher.log` | The launcher's own log |
-| `dsh-web.log` | Output of `dsh web` (overwritten on each start) |
+| `dsh-web-<timestamp>.log` | Output of the most recent `dsh web` launch; one file per launch, newest 5 kept |
 | `dsh.lnk.original-backup` | Backup of the original desktop shortcut |
 
 ## Command line
@@ -90,9 +90,14 @@ build fails.
 
 ## Troubleshooting
 
-When startup fails the splash turns red and offers "view log", which opens `dsh-web.log`
-in Notepad. `launcher.log` is also worth reading — it records the resolved configuration
-and every probe, launch and ready step.
+When startup fails the splash turns red and offers "view log", which opens that launch's
+log in Notepad. `launcher.log` is also worth reading — it records the resolved
+configuration and every probe, launch and ready step.
+
+Why one log per launch rather than a fixed `dsh-web.log`: `dsh` keeps its own stdout
+redirect open for its whole lifetime, so a later launch's `>` cannot open the file,
+`cmd` aborts that redirection and the launch fails even though the previous server is
+perfectly healthy. Timestamped names cannot collide.
 
 ## License
 

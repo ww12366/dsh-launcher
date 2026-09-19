@@ -93,9 +93,42 @@ namespace DshLauncher
         internal static readonly string HomeDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dsh", "launcher");
 
-        internal static readonly string WebLog = Path.Combine(HomeDir, "dsh-web.log");
         internal static readonly string AppLog = Path.Combine(HomeDir, "launcher.log");
         internal static readonly string Wrapper = Path.Combine(HomeDir, "run-dsh-web.cmd");
+
+        /// Per-launch logs kept in the launcher directory.
+        private const int KeepWebLogs = 5;
+
+        /// A fresh log path for one launch.
+        ///
+        /// A fixed filename does not work: `dsh` keeps its own stdout redirect
+        /// open for its entire lifetime, so the next launch's `>` cannot open
+        /// the file, cmd aborts that redirection, the node command never runs
+        /// and the launch fails while the previous server is still healthy.
+        /// One file per launch cannot collide.
+        internal static string NewWebLogPath()
+        {
+            PruneWebLogs();
+            return Path.Combine(HomeDir, "dsh-web-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".log");
+        }
+
+        /// Keep the launcher directory from growing without bound.
+        private static void PruneWebLogs()
+        {
+            try
+            {
+                // The wider glob also retires the legacy fixed-name log.
+                string[] files = Directory.GetFiles(HomeDir, "dsh-web*.log");
+                // Timestamped names sort chronologically as plain strings.
+                Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+                int remove = files.Length - KeepWebLogs + 1;
+                for (int i = 0; i < remove; i++)
+                {
+                    try { File.Delete(files[i]); } catch { }
+                }
+            }
+            catch { }
+        }
 
         internal static void Log(string msg)
         {
@@ -135,6 +168,8 @@ namespace DshLauncher
         private volatile bool _pingFresh;
 
         private bool _closeHover;
+        /// The log file this launch is writing, so "view log" opens the right one.
+        private string _webLog;
 
         public SplashForm(bool preview)
         {
@@ -375,22 +410,23 @@ namespace DshLauncher
                 Directory.CreateDirectory(Cfg.HomeDir);
 
                 string bin = ResolveDshBin();
-                string portArg = (Cfg.Port == 3080) ? "" : (" --port " + Cfg.Port);
+                string portArg = (Cfg.Port == Cfg.DefaultPort) ? "" : (" --port " + Cfg.Port);
+                _webLog = Cfg.NewWebLogPath();
                 string body;
                 if (bin != null)
                 {
                     string node = (Cfg.NodeExe != null && File.Exists(Cfg.NodeExe)) ? Cfg.NodeExe : "node";
-                    Cfg.Log("launching node: " + node + " " + bin + " web" + portArg);
+                    Cfg.Log("launching node: " + node + " " + bin + " web" + portArg + " (log: " + _webLog + ")");
                     body = "@echo off\r\n"
-                         + "echo [%DATE% %TIME%] \" " + node + " \" \"" + bin + "\" web" + portArg + " > \"" + Cfg.WebLog + "\"\r\n"
-                         + "\"" + node + "\" \"" + bin + "\" web" + portArg + " >> \"" + Cfg.WebLog + "\" 2>&1\r\n";
+                         + "echo [%DATE% %TIME%] \" " + node + " \" \"" + bin + "\" web" + portArg + " > \"" + _webLog + "\"\r\n"
+                         + "\"" + node + "\" \"" + bin + "\" web" + portArg + " >> \"" + _webLog + "\" 2>&1\r\n";
                 }
                 else
                 {
                     Cfg.Log("no cached dsh found; falling back to npx");
                     body = "@echo off\r\n"
-                         + "echo [%DATE% %TIME%] npx @deepseek-ai/dsh web" + portArg + " > \"" + Cfg.WebLog + "\"\r\n"
-                         + "call npx.cmd --yes @deepseek-ai/dsh web" + portArg + " >> \"" + Cfg.WebLog + "\" 2>&1\r\n";
+                         + "echo [%DATE% %TIME%] npx @deepseek-ai/dsh web" + portArg + " > \"" + _webLog + "\"\r\n"
+                         + "call npx.cmd --yes @deepseek-ai/dsh web" + portArg + " >> \"" + _webLog + "\" 2>&1\r\n";
                 }
                 File.WriteAllText(Cfg.Wrapper, body, new UTF8Encoding(false));
 
@@ -572,7 +608,8 @@ namespace DshLauncher
             {
                 try
                 {
-                    if (File.Exists(Cfg.WebLog)) Process.Start("notepad.exe", "\"" + Cfg.WebLog + "\"");
+                    string log = _webLog;
+                    if (log != null && File.Exists(log)) Process.Start("notepad.exe", "\"" + log + "\"");
                     else Process.Start("explorer.exe", "/select,\"" + Cfg.HomeDir + "\"");
                 }
                 catch { }
